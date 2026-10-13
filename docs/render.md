@@ -1,6 +1,6 @@
 # Deploy the backend on Render
 
-Create a **Web Service** from this repository, select branch **dev** and runtime **Docker**, and use `./Dockerfile` with build context `.`. Leave Docker Command empty; the image starts Uvicorn on Render's `PORT`. Alternatively, import this repository's `render.yaml` and review the service settings.
+Create a **Web Service** from this repository, select branch **main** and runtime **Docker**, and use `./Dockerfile` with build context `.`. Leave Docker Command empty; the image starts Uvicorn on Render's `PORT`. Alternatively, import this repository's `render.yaml` and review the service settings.
 
 Set these environment variables in Render:
 
@@ -102,7 +102,7 @@ References: [Cloudinary upload parameters](https://cloudinary.com/documentation/
 
 ## HIS-001 history and Audit Log deployment
 
-Deploy the backend `dev` commit before the matching frontend. `scripts/start.sh` applies migration `0014` automatically using the same environment-specific `DATABASE_URL`, then starts Uvicorn. This migration adds indexes only; no new secrets or environment variables are required. Both existing Dockerfiles already include these files.
+Deploy the backend `main` commit before the matching frontend. `scripts/start.sh` applies migration `0014` automatically using the same environment-specific `DATABASE_URL`, then starts Uvicorn. This migration adds indexes only; no new secrets or environment variables are required. Both existing Dockerfiles already include these files.
 
 Audit access is explicit. After activating a named reviewer, an authorised operator can run `python -m scripts.configure_audit_reviewer` in the backend service environment to grant or revoke a particular company UUID. Grant makes the account read-only and refuses active financial appointments. The last company revocation removes the audit capability and never restores write access. Company UUIDs are available from the protected organisation API. Do not use shared staff identities or grant audit visibility merely because someone administers the application.
 
@@ -111,7 +111,7 @@ After deployment, check requester history/filter refresh, an approver's pending 
 
 ## Notification delivery (NOT-001)
 
-Deploy backend `dev` first, then frontend `dev`. The tracked Dockerfiles already include the worker, migration and drawer. `start.sh` applies migration `0015` before Uvicorn using this environment's single `DATABASE_URL`; development and production still use separate databases. Keep `MAIL_ENABLED`, `MAIL_FROM`, `RESEND_API_KEY`, `FRONTEND_ORIGIN` and `ACCOUNT_LINK_SECRET` configured as above. No new secret or worker service is needed.
+Deploy backend `main` first, then frontend `main`. The tracked Dockerfiles already include the worker, migration and drawer. `start.sh` applies migration `0015` before Uvicorn using this environment's single `DATABASE_URL`; development and production still use separate databases. Keep `MAIL_ENABLED`, `MAIL_FROM`, `RESEND_API_KEY`, `FRONTEND_ORIGIN` and `ACCOUNT_LINK_SECRET` configured as above. No new secret or worker service is needed.
 
 The notification worker starts with the web application and processes PostgreSQL outbox rows. It creates alerts even with `MAIL_ENABLED=false`; the drawer explicitly says email is off. Alerts created while email is off are not automatically emailed after enabling it. On an initial deployment, historical events older than 24 hours create eligible in-app alerts but skip email, avoiding a flood of old messages. More recent pending events can send when mail is enabled. No reminder/escalation schedule or automatic replacement approver is introduced.
 
@@ -139,7 +139,7 @@ The owner approved free fonts in place of the earlier proprietary font specifica
 
 The renderer records the bundled font profile and content digest. Missing/corrupt bundled assets produce an explicit error; repair/redeploy the image and retry the stored capture. Existing ready PDFs remain downloadable subject to current permissions. Tests and visual checks use the same bundled binaries as the deployment, including long cost tables, signatures, the naira symbol and accented names.
 
-After deployment, generate a requisition PDF and an approved transfer letter, then confirm each private Cloudinary upload/download works as the authorised requester. That live provider check remains a deployment check; local tests use isolated storage and do not claim live verification. The owner explicitly authorised pushing the tested implementation to `dev` before this check.
+After deployment, generate a requisition PDF and an approved transfer letter, then confirm each private Cloudinary upload/download works as the authorised requester. That live provider check remains a deployment check; local tests use isolated storage and do not claim live verification. The owner explicitly authorised pushing the tested implementation to `main` before this check.
 
 Export files are authenticated Cloudinary raw assets under `exports/`, delivered only through the authenticated API with digest/size verification. Each export belongs to the identity that requested it; another authorised viewer generates their own permitted projection. Bank access and Board assignments are rechecked for reads/downloads. Export metadata freezes the selected revision/capture, timestamps, template/render/font versions and object/file digests. Signed content and signing times do not change when exported. Preserve these rows and private assets in backups. Interrupted storage publication may leave an unreferenced private object; only reconcile verified unreferenced objects, never delete a referenced ready export.
 

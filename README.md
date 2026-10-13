@@ -1,6 +1,6 @@
 # Custodian Backend
 
-FastAPI and PostgreSQL backend for Brendan Nicholas Holdings' requisition and approval system. Development branch: `dev`. Python: 3.12; dependencies are locked with uv.
+FastAPI and PostgreSQL backend for Brendan Nicholas Holdings' requisition and approval system. Development branch: `main`. Python: 3.12; dependencies are locked with uv.
 
 **Start here: [Clone, Set Up and Develop](docs/development.md).** The guide covers both repositories, local PostgreSQL, migrations, first-login credentials, external services, tests and the delivery workflow. Keep `bnh-backend` and `bnh-ui` as sibling directories.
 

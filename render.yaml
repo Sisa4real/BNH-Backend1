@@ -1,7 +1,7 @@
 services:
   - type: web
     name: bnh-backend
-    branch: dev
+    branch: main
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .

@@ -97,7 +97,7 @@ Tests need local PostgreSQL 16 binaries (`initdb`, `pg_ctl`, `psql`; set `PG_BIN
 
 Render, Docker web service, using `Dockerfile` and `render.yaml` (`healthCheckPath: /api/v1/health/ready`). `scripts/start.sh` runs `alembic upgrade head` with `DATABASE_URL`, then Uvicorn; startup fails if migration fails. Production env: `ENVIRONMENT=production`, `DATABASE_URL`, `DATABASE_SSL=true`, `COOKIE_SECURE=true`, `ALLOWED_ORIGINS`, plus optional Resend/Cloudinary settings. Development and production use different databases. Deploy the backend before the matching frontend. Details in `docs/render.md`.
 
-Note: `render.yaml` and the docs still name branch `dev`, and `docs/development.md` still clones from `Bapper-Ik/bnh-backend`. The current remote is `github.com/Sisa4real/BNH-Backend1` and has only `main`. Confirm the deploy branch with the owner before changing either.
+Branch: all work, pushes and Render deploys use `main` on `github.com/Sisa4real/BNH-Backend1`.
 
 ### Engineering conventions
 

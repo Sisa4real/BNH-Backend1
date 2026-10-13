@@ -1,6 +1,6 @@
 # Custodian: Clone, Set Up and Develop
 
-This guide brings up the BNH requisition system from the two `dev` repositories. It covers a local development database, first sign-in, optional services, tests and the feature delivery workflow. Commands use Bash on Linux, macOS or WSL; the isolated PostgreSQL test helper requires local PostgreSQL binaries and must run as a non-root user.
+This guide brings up the BNH requisition system from the `main` branch of both repositories. It covers a local development database, first sign-in, optional services, tests and the feature delivery workflow. Commands use Bash on Linux, macOS or WSL; the isolated PostgreSQL test helper requires local PostgreSQL binaries and must run as a non-root user.
 
 ## 1. Prerequisites
 
@@ -23,8 +23,8 @@ Run from the directory where you keep projects:
 ```bash
 mkdir BNH
 cd BNH
-git clone --branch dev https://github.com/Bapper-Ik/bnh-backend.git
-git clone --branch dev https://github.com/Bapper-Ik/bnh-ui.git
+git clone --branch main https://github.com/Sisa4real/BNH-Backend1.git bnh-backend
+git clone --branch main https://github.com/Sisa4real/BNH-Frontend1.git bnh-ui
 ```
 
 Keep these exact sibling directory names:
@@ -35,7 +35,7 @@ BNH/
   bnh-ui/        # SvelteKit, TypeScript, browser tests
 ```
 
-Each directory is a separate Git repository with its own `dev` branch and remote. The parent directory does not need to be a repository. If HTTPS authentication fails, obtain repository access and use your configured GitHub credential manager or the equivalent SSH clone URLs; do not place access tokens in commands or files.
+Each directory is a separate Git repository with its own `main` branch and remote. The parent directory does not need to be a repository. If HTTPS authentication fails, obtain repository access and use your configured GitHub credential manager or the equivalent SSH clone URLs; do not place access tokens in commands or files.
 
 Sibling placement matters: the browser runner starts `../bnh-backend`, and the API type generator writes into `../bnh-ui`.
 
@@ -256,7 +256,7 @@ npm run test:e2e -- tests/requisitions.e2e.ts
 | `bnh-ui/src/lib/styles/`                                                 | Shared visual tokens and styles.                                         |
 | `bnh-ui/tests/`                                                          | Connected Playwright journeys.                                           |
 
-Before starting, check both repositories with `git status`, switch to `dev`, and update with `git pull --ff-only` when your work is safely committed. Never discard someone else's changes to obtain a clean checkout.
+Before starting, check both repositories with `git status`, switch to `main`, and update with `git pull --ff-only` when your work is safely committed. Never discard someone else's changes to obtain a clean checkout.
 
 After pulling backend changes, run `uv sync --locked` and `uv run alembic upgrade head` before starting the API. Run `npm ci` when the frontend lockfile changes.
 
@@ -268,7 +268,7 @@ uv run python -m scripts.export_openapi
 
 This writes `bnh-ui/src/lib/api/openapi.json` and `schema.ts`. Commit the generated files with the matching feature; do not hand-edit them.
 
-Follow the agreed delivery gate: select one feature using its stable ID in `docs/reference/implementation_pan.md`, complete its connected backend/frontend behavior, run the required checks, update the existing tracker/delivery notes, review the exact diff, then commit and push each affected repository to `origin/dev` before starting the next feature. Do not automatically merge to `main`/`master` or force-push.
+Follow the agreed delivery gate: select one feature using its stable ID in `docs/reference/implementation_pan.md`, complete its connected backend/frontend behavior, run the required checks, update the existing tracker/delivery notes, review the exact diff, then commit and push each affected repository to `origin/main` before starting the next feature. Never force-push.
 
 If working in the original paired workspace, update the shared `BNH/docs/` originals and mirror the relevant snapshots into each affected repository. In a fresh clone, use the committed snapshots to understand scope and coordinate canonical documentation changes with the project maintainer. `scripts.sync_requirements` needs the original shared docs directory; it is not an installation step.
 
@@ -295,7 +295,7 @@ docker build -t bnh-backend .
 docker build -t bnh-ui .
 ```
 
-For deployment details, use `bnh-backend/docs/render.md` and `bnh-ui/docs/render.md`. Deploy both matching `dev` revisions when a feature spans the API and UI. Backend startup runs all pending migrations before Uvicorn. A brand-new database still needs initial schema/compatibility-role provisioning before normal startup.
+For deployment details, use `bnh-backend/docs/render.md` and `bnh-ui/docs/render.md`. Deploy both matching `main` revisions when a feature spans the API and UI. Backend startup runs all pending migrations before Uvicorn. A brand-new database still needs initial schema/compatibility-role provisioning before normal startup.
 
 Production uses its own database, HTTPS frontend origin, secure cookies and private environment values. Configure `DATABASE_SSL` according to the PostgreSQL service (the Render guide uses `true`). The frontend needs only its backend origin; it is a Node web service, not a static site. A container's `127.0.0.1` refers to that container, so use an address reachable from the frontend container when setting `BACKEND_URL`.
 
