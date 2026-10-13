@@ -2,7 +2,7 @@
 
 ## Custodian rules
 
-- Money is integer kobo only; never floats; never computed by an AI at runtime.
+- Money is exact decimal: NUMERIC(17,2) in the database, Python Decimal in code, decimal strings over the API. Never floats. Never computed by an AI.
 - DoA thresholds live in a database/config table and are enforced on the server. A role cannot approve above its band.
 - Authority = a position held by a person for a period. Designations are data.
 - The event log is append-only. No role, including admin, can edit or delete it. Corrections are new entries.
@@ -20,7 +20,6 @@ Backend for **Custodian by Brendan**, Brendan Nicholas Holdings' (BNH) requisiti
 
 These are current code facts carried over from the previous agent's instructions, which conflict with the Custodian rules. Do not extend them; when you touch these areas, raise the conflict and plan a migration.
 
-- **Money**: amounts are stored as `NUMERIC(17,2)` naira, computed with Python `Decimal`, and exchanged over the API as decimal strings (`app/authority/policy.py`, `app/requisitions/models.py`, migration `0005`). The rule requires integer kobo. Converting changes the API contract, so `bnh-ui` (`src/lib/money.ts`, generated `src/lib/api/schema.ts`, forms and displays) must change in step.
 - **DoA thresholds**: the band limits (₦5m / ₦100m / ₦500m) and requester floors are hard-coded in `app/authority/policy.py`. The rule requires them in a database/config table enforced on the server.
 - **Event log**: `custodian.audit_events` and signed evidence have append-only triggers (migration `0002`), but the app runs with a single schema-owner `DATABASE_URL` that could alter or drop those triggers. The rule says no role can edit or delete the log, so treat this as an open gap, not an accepted design.
 - Authority as data is already in place: offices (`app/organisation/models.py` `Office`) link a person to a role, entity/department, `valid_from` / `valid_until` and an authorisation reference.
