@@ -12,7 +12,8 @@
 htmlcov
 tests
 docs
-AGENTS.md
+CLAUDE.md
+.claude
 README.md
 
 # Ignore arbitrary local fonts; include only the approved bundled font files

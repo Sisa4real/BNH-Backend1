@@ -39,7 +39,7 @@ Each directory is a separate Git repository with its own `dev` branch and remote
 
 Sibling placement matters: the browser runner starts `../bnh-backend`, and the API type generator writes into `../bnh-ui`.
 
-The original workspace also has a shared `docs/` directory. It is not a third repository or a requirement for starting the application. Each clone includes product snapshots under `docs/reference/`. Personal-data screenshots are intentionally not distributed with those snapshots. Read each repository's `AGENTS.md` before changing code.
+The original workspace also has a shared `docs/` directory. It is not a third repository or a requirement for starting the application. Each clone includes product snapshots under `docs/reference/`. Personal-data screenshots are intentionally not distributed with those snapshots. Read each repository's `CLAUDE.md` before changing code.
 
 ## 3. Prepare a Local Development Database
 
@@ -153,7 +153,7 @@ Ctrl+C stops either development server. Your PostgreSQL data remains available o
 6. Sign in as a staff requester, add or select a vendor, create a requisition, save a draft, then review and sign its submission. New references look like `BNH-FIN-000020`; the internal URL ID remains a UUID. A missing department code blocks new draft creation with a setup message, while saved requests remain usable.
 7. The assigned approver sees **My Tasks**. Ordinary staff do not see an empty approval inbox. Requesters can track decisions and retrieve permitted PDFs/approved bank transfer letters from requisition details.
 
-Approval routing is direct: ordinary staff requests through ₦5 million go to their HOD; above ₦5 million through ₦100 million go to the Chief of Staff; above ₦100 million through ₦500 million go to the MD; higher amounts go to the Board. Eligible HODs may separately approve their own ₦1–₦5 million requests using their department sub-account. Chief of Staff and MD requester floors still apply. Board outcomes require Secretary recording and independent Chairman confirmation. See `docs/reference/recap.md` and the latest decisions in `AGENTS.md` for the full policy.
+Approval routing is direct: ordinary staff requests through ₦5 million go to their HOD; above ₦5 million through ₦100 million go to the Chief of Staff; above ₦100 million through ₦500 million go to the MD; higher amounts go to the Board. Eligible HODs may separately approve their own ₦1–₦5 million requests using their department sub-account. Chief of Staff and MD requester floors still apply. Board outcomes require Secretary recording and independent Chairman confirmation. See `docs/reference/recap.md` and the latest decisions in `CLAUDE.md` for the full policy.
 
 Approval is authorisation, not proof of bank payment. Signed records and existing references are not rewritten when master details change.
 

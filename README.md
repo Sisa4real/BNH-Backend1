@@ -28,7 +28,7 @@ New requisition references use administrator-selected three-letter department co
 
 - [Development and onboarding guide](docs/development.md)
 - [Render deployment and operations](docs/render.md)
-- [Engineering and delivery instructions](AGENTS.md)
+- [Engineering and delivery instructions](CLAUDE.md)
 - [Fourteen-screen scope](docs/reference/ui_scrrens.md)
 - [Feature requirements and tracker](docs/reference/implementation_pan.md)
 - [Approval policy recap](docs/reference/recap.md)
