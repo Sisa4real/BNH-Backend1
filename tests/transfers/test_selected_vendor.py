@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.exports.models import Export
 from app.requisitions.models import Revision
 from tests.exports.test_exports import generate
-from tests.requisitions.test_workflow import content, sign_in, signed
+from tests.requisitions.test_workflow import content, sign_in, signed, with_document
 from tests.transfers.test_transfers import configure
 
 BANK = {
@@ -83,7 +83,7 @@ async def test_shared_vendor_approval_download_uses_selected_bank_version(
         path + "/draft", json={"expected_version": req["version"], "content": req["content"]}
     )
     assert saved.status_code == 200, saved.text
-    req = saved.json()
+    req = await with_document(client, saved.json())
     challenge = await client.post(
         path + "/signing-challenges", json={"expected_version": req["version"], "action": "submit"}
     )

@@ -13,7 +13,7 @@ from app.organisation.models import Office
 from app.requisitions.models import Requisition, SigningChallenge
 from tests.requisitions.test_creation import context as context
 from tests.requisitions.test_creation import png
-from tests.requisitions.test_workflow import draft, sign_in, signed
+from tests.requisitions.test_workflow import draft, sign_in, signed, with_document
 from tests.requisitions.test_workflow import organisation as organisation
 
 
@@ -380,7 +380,7 @@ async def test_conflicted_board_appointments_block_submission(
     client, _, _ = context
     p = organisation["people"]
     await sign_in(client, p["staff"])
-    req = await draft(client, organisation, "600000000")
+    req = await with_document(client, await draft(client, organisation, "600000000"))
     async with sessions() as s, s.begin():
         office = await s.scalar(select(Office).where(Office.identity_id == p["chairman"]["id"]))
         if conflict == "same_person":

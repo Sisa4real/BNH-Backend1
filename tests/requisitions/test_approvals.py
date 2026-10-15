@@ -336,7 +336,9 @@ async def test_correction_snapshots_and_private_evidence_survive_resubmission(
     assert (await client.get(path + "/attachments?revision=1")).json()["items"][0]["id"] == file[
         "id"
     ]
-    assert (await client.get(path + "/attachments?revision=2")).json()["items"] == []
+    # The excluded revision-1 evidence is not carried into revision 2, which has its own document.
+    second = (await client.get(path + "/attachments?revision=2")).json()["items"]
+    assert len(second) == 1 and second[0]["id"] != file["id"]
     await sign_in(client, people["chief_of_staff"])
     req, _ = await signed(client, req, people["chief_of_staff"], "approve")
     assert req["state"] == "APPROVED"

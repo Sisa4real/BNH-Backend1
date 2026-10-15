@@ -1,8 +1,10 @@
+import io
 from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
@@ -97,7 +99,37 @@ async def draft(client, org, amount):
     return r.json()
 
 
+def document():
+    out = io.BytesIO()
+    Image.new("RGB", (2, 2)).save(out, format="PNG")
+    return out.getvalue()
+
+
+async def with_document(client, req):
+    """Submission needs a validated supporting document; attach one if the draft has none."""
+    listing = await client.get(f"/api/v1/requisitions/{req['id']}/attachments")
+    assert listing.status_code == 200, listing.text
+    if listing.json()["items"]:
+        return req
+    r = await client.post(
+        f"/api/v1/requisitions/{req['id']}/attachments",
+        params={
+            "filename": "supporting-quotation.png",
+            "expected_version": req["version"],
+            "upload_key": str(uuid4()),
+        },
+        content=document(),
+        headers={"content-type": "image/png"},
+    )
+    assert r.status_code == 201, r.text
+    r = await client.get(f"/api/v1/requisitions/{req['id']}")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
 async def signed(client, req, person, action, reason=""):
+    if action == "submit":
+        req = await with_document(client, req)
     intent = {"expected_version": req["version"], "action": action, "reason": reason}
     r = await client.post(f"/api/v1/requisitions/{req['id']}/signing-challenges", json=intent)
     assert r.status_code == 201, r.text
@@ -116,9 +148,13 @@ async def signed(client, req, person, action, reason=""):
 
 @pytest.fixture
 async def client(settings):
+    from tests.requisitions.test_creation import TestStorage
+
     app = create_app(settings)
     app.state.notification_worker = False
     app.state.export_worker = False
+    app.state.evidence_storage = TestStorage()
+    app.state.uploads_enabled = True
     async with app.router.lifespan_context(app):
         async with AsyncClient(
             transport=ASGITransport(app),
@@ -205,7 +241,7 @@ async def test_self_request_escalates_and_cannot_self_approve(client, organisati
 async def test_signed_challenge_cannot_follow_changed_content(client, organisation):
     person = organisation["people"]["staff"]
     await sign_in(client, person)
-    req = await draft(client, organisation, "10.00")
+    req = await with_document(client, await draft(client, organisation, "10.00"))
     intent = {"expected_version": req["version"], "action": "submit"}
     challenge = await client.post(
         f"/api/v1/requisitions/{req['id']}/signing-challenges", json=intent

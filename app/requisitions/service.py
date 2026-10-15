@@ -30,6 +30,8 @@ from app.vendors.service import view as vendor_view
 
 DECLARATION = "I confirm that all information provided is true and correct and work will be completed as specified."
 DECLARATION_VERSION = "originator-v1"
+# Submitting (and resubmitting) needs at least one validated supporting document.
+SUBMISSION_REQUIRES_ATTACHMENT = True
 
 
 def content_digest(value: object) -> str:
@@ -89,6 +91,13 @@ async def authorise_intent(
                 validate_account_number(content.vendor.account_number)
             except ValueError as exc:
                 raise DomainError("VALIDATION_FAILED", str(exc), 422) from exc
+        # Invalid documents are refused first, then at least one validated document is required.
+        if SUBMISSION_REQUIRES_ATTACHMENT and not await attachment_manifest(s, req):
+            raise DomainError(
+                "VALIDATION_FAILED",
+                "Attach at least one supporting document before submitting.",
+                422,
+            )
         version_id = req.context.get("vendor_version_id")
         if version_id:
             version = await s.get(VendorVersion, UUID(str(version_id)))

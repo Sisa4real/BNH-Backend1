@@ -8,6 +8,19 @@ POLICY_VERSION = "bnh-doa-v2"
 HOD_SELF_APPROVAL_POLICY = "bnh-doa-v2"
 MAX_TOTAL = Decimal("999999999999999.99")
 
+# Shared readable names for approval authority codes. Use these for user-facing text
+# instead of reformatting the internal codes.
+AUTHORITY_NAMES: dict[str, str] = {
+    "hod": "HOD",
+    "chief_of_staff": "Chief of Staff",
+    "md": "MD",
+    "board": "Board",
+}
+
+
+def authority_name(code: str) -> str:
+    return AUTHORITY_NAMES.get(code, code)
+
 
 class Authority(IntEnum):
     HOD = 1
@@ -23,6 +36,10 @@ class Authority(IntEnum):
             self.MD: "md",
             self.BOARD: "board",
         }[self]
+
+    @property
+    def display_name(self) -> str:
+        return authority_name(self.label)
 
 
 def exact_decimal(value: str, places: int, *, positive: bool = False) -> Decimal:
@@ -91,15 +108,13 @@ def resolve(total: str, offices: set[str], currency: Literal["NGN"] = "NGN") -> 
         else Authority.HOD
     )
     authority = max(band, floor)
-    explanation = f"Amount requires {band.label.replace('_', ' ')}."
+    explanation = f"Amount requires {band.display_name}."
     if authority == Authority.HOD and "hod" in offices:
         explanation += (
             " The requesting HOD may approve separately using the department sub-account."
         )
     if floor > band:
-        explanation += (
-            f" Requester's office raises required authority to {floor.label.replace('_', ' ')}."
-        )
+        explanation += f" Requester's office raises required authority to {floor.display_name}."
     return Route(
         authority=authority, amount_authority=band, requester_floor=floor, explanation=explanation
     )

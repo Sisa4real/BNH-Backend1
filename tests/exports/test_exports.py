@@ -335,6 +335,6 @@ async def test_explicit_retry_preserves_capture_and_approval_after_render_failur
         after = (await s.get(Export, UUID(item["id"]))).snapshot
         assert after == before
     # Current evidence delivery verifies stored bytes, even after successful generation.
-    key = next(iter(storage.files))
+    key = next(k for k in storage.files if k.startswith("exports/"))
     storage.files[key] = b"tampered"
     assert (await client.get(path + "/content")).status_code == 503

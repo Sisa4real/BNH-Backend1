@@ -22,6 +22,7 @@ from tests.requisitions.test_workflow import (  # noqa: F401
     draft,
     sign_in,
     signed,
+    with_document,
 )
 from tests.requisitions.test_workflow import organisation as organisation
 
@@ -127,7 +128,7 @@ async def test_missing_hod_draft_persists_and_is_private_after_hod_signs_in(
         )
         requester.permissions = ["staff:manage", "organisation:manage", "office_assignment:manage"]
     await sign_in(client, people["staff"])
-    req = await draft(client, organisation, "71640")
+    req = await with_document(client, await draft(client, organisation, "71640"))
     path = "/api/v1/requisitions/" + req["id"]
     assert "hod" in req["submission_blocker"]
     assert req["state"] == "DRAFT"
@@ -235,6 +236,7 @@ async def test_document_validation_unavailable_storage_and_stale_challenge(conte
     assert (await upload(client, req, filename="../bad.png")).status_code == 422
     app.state.settings.attachment_max_bytes = 1024
     assert (await upload(client, req, data=b"x" * 1025)).status_code == 422
+    req = await with_document(client, req)
     intent = {"expected_version": req["version"], "action": "submit"}
     challenge = (
         await client.post(f"/api/v1/requisitions/{req['id']}/signing-challenges", json=intent)
@@ -275,7 +277,7 @@ async def test_route_assignment_change_invalidates_signature(context, organisati
     client, _, _ = context
     person = organisation["people"]["staff"]
     await sign_in(client, person)
-    req = await draft(client, organisation, "5000000.01")
+    req = await with_document(client, await draft(client, organisation, "5000000.01"))
     assert req["required_authority"] == "chief_of_staff" and req["submission_blocker"] is None
     async with sessions() as s, s.begin():
         office = await s.scalar(
@@ -309,6 +311,7 @@ async def test_expired_signature_and_bank_redaction_on_replay(context, organisat
             json={"expected_version": req["version"], "content": full},
         )
     ).json()
+    req = await with_document(client, req)
     intent = {"expected_version": req["version"], "action": "submit"}
     challenge = (
         await client.post(f"/api/v1/requisitions/{req['id']}/signing-challenges", json=intent)
@@ -438,7 +441,7 @@ async def test_concurrent_submission_records_one_revision_and_rejects_forged_con
         "requester_id": str(person["id"]),
     }
     assert (await client.post("/api/v1/requisitions", json=bad)).status_code == 422
-    req = await draft(client, organisation, "10")
+    req = await with_document(client, await draft(client, organisation, "10"))
     intent = {"expected_version": req["version"], "action": "submit"}
     challenge = (
         await client.post(f"/api/v1/requisitions/{req['id']}/signing-challenges", json=intent)
@@ -640,7 +643,7 @@ async def test_draft_survives_new_application_and_another_actor_cannot_use_its_c
     client, _, _ = context
     staff, hod = organisation["people"]["staff"], organisation["people"]["hod"]
     await sign_in(client, staff)
-    req = await draft(client, organisation, "10")
+    req = await with_document(client, await draft(client, organisation, "10"))
     intent = {"expected_version": req["version"], "action": "submit"}
     challenge = (
         await client.post(f"/api/v1/requisitions/{req['id']}/signing-challenges", json=intent)
@@ -649,6 +652,8 @@ async def test_draft_survives_new_application_and_another_actor_cannot_use_its_c
     restarted = create_app(settings)
     restarted.state.notification_worker = False
     restarted.state.export_worker = False
+    restarted.state.evidence_storage = TestStorage()
+    restarted.state.uploads_enabled = True
     async with restarted.router.lifespan_context(restarted):
         async with AsyncClient(
             transport=ASGITransport(restarted),
@@ -659,7 +664,7 @@ async def test_draft_survives_new_application_and_another_actor_cannot_use_its_c
             restored = (await other.get("/api/v1/requisitions/" + req["id"])).json()
             assert restored["content"] == req["content"] and restored["version"] == req["version"]
             await sign_in(other, hod)
-            own = await draft(other, organisation, "10")
+            own = await with_document(other, await draft(other, organisation, "10"))
             command = {
                 "expected_version": own["version"],
                 "action": "submit",
@@ -745,3 +750,79 @@ async def test_legacy_department_codes_block_only_new_drafts(context, organisati
     assert saved.status_code == 200 and saved.json()["reference"] == req["reference"]
     submitted, _ = await signed(client, saved.json(), person, "submit")
     assert submitted["reference"] == req["reference"] and submitted["state"] == "PENDING_AUTHORITY"
+
+
+async def test_submission_requires_a_validated_supporting_document(context, organisation, sessions):
+    client, _, storage = context
+    person = organisation["people"]["staff"]
+    await sign_in(client, person)
+    message = "Attach at least one supporting document before submitting."
+    # Drafts still save and update without documents.
+    req = await draft(client, organisation, "1000")
+    assert req["state"] == "DRAFT" and req["submission_blocker"] == message
+    path = "/api/v1/requisitions/" + req["id"]
+    saved = await client.put(
+        path + "/draft", json={"expected_version": req["version"], "content": content("1200")}
+    )
+    assert saved.status_code == 200, saved.text
+    req = saved.json()
+    page = (await client.get(path + "/attachments")).json()
+    assert page["submission_requires_attachment"] is True and page["uploads_enabled"] is True
+    staged = await client.get(
+        "/api/v1/staged-attachments",
+        params={"entity_id": organisation["entity_id"], "creation_key": str(uuid4())},
+    )
+    assert staged.status_code == 200 and staged.json()["submission_requires_attachment"] is True
+    refused = await client.post(
+        path + "/signing-challenges", json={"expected_version": req["version"], "action": "submit"}
+    )
+    assert refused.status_code == 422
+    assert refused.json()["code"] == "VALIDATION_FAILED" and refused.json()["message"] == message
+    assert (await client.get(path)).json()["state"] == "DRAFT"
+    # One validated document is enough; it is fingerprint-checked and frozen on submission.
+    assert (await upload(client, req)).status_code == 201
+    req = (await client.get(path)).json()
+    assert req["submission_blocker"] is None
+    submitted, _ = await signed(client, req, person, "submit")
+    assert submitted["state"] == "PENDING_AUTHORITY"
+    async with sessions() as s:
+        files = (
+            await s.scalars(select(Attachment).where(Attachment.requisition_id == UUID(req["id"])))
+        ).all()
+        assert len(files) == 1 and files[0].frozen
+        revision = await s.scalar(
+            select(Revision).where(Revision.requisition_id == UUID(req["id"]))
+        )
+        assert revision and len(revision.context["attachments"]) == 1
+    assert len(storage.files) == 1
+
+
+async def test_frozen_routing_text_is_not_rewritten(context, organisation, monkeypatch):
+    from app.authority.policy import Authority
+
+    client, _, _ = context
+    people = organisation["people"]
+    await sign_in(client, people["staff"])
+    # Freeze a revision with the wording used before readable office names were introduced.
+    monkeypatch.setattr(
+        Authority, "display_name", property(lambda self: self.label.replace("_", " "))
+    )
+    req, _ = await signed(
+        client, await draft(client, organisation, "1000"), people["staff"], "submit"
+    )
+    assert req["routing_explanation"] == "Amount requires hod."
+    monkeypatch.undo()
+    path = "/api/v1/requisitions/" + req["id"]
+    assert (await client.get(path)).json()["routing_explanation"] == "Amount requires hod."
+    history = (await client.get(path + "/history")).json()["items"]
+    assert "Amount requires hod." in [item.get("routing_explanation") for item in history]
+    # The approver still sees and signs the frozen route.
+    await sign_in(client, people["hod"])
+    assert (await client.get(path)).json()["routing_explanation"] == "Amount requires hod."
+    approved, _ = await signed(client, req, people["hod"], "approve")
+    assert approved["routing_explanation"] == "Amount requires hod."
+    # New drafts use the readable names.
+    await sign_in(client, people["staff"])
+    assert (await draft(client, organisation, "1000"))["routing_explanation"] == (
+        "Amount requires HOD."
+    )

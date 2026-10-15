@@ -23,7 +23,7 @@ from app.evidence.models import Attachment
 from app.evidence.storage import Storage
 from app.evidence.validation import validate
 from app.identity.service import Actor, current_actor
-from app.requisitions.service import get_revision
+from app.requisitions.service import SUBMISSION_REQUIRES_ATTACHMENT, get_revision
 
 router = APIRouter(prefix="/api/v1", tags=["Private documents"])
 
@@ -54,6 +54,7 @@ class AttachmentPage(BaseModel):
     items: list[AttachmentView]
     request_version: int
     uploads_enabled: bool
+    submission_requires_attachment: bool = SUBMISSION_REQUIRES_ATTACHMENT
     max_bytes: int
     max_count: int
 

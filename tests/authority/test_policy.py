@@ -1,6 +1,12 @@
 import pytest
 
-from app.authority.policy import Authority, calculate_lines, resolve
+from app.authority.policy import (
+    AUTHORITY_NAMES,
+    Authority,
+    authority_name,
+    calculate_lines,
+    resolve,
+)
 
 
 @pytest.mark.parametrize(
@@ -79,3 +85,49 @@ def test_exact_line_rounding_and_total():
 def test_invalid_lines(qty, price):
     with pytest.raises(ValueError):
         calculate_lines([(qty, price)])
+
+
+@pytest.mark.parametrize(
+    "amount,offices,expected",
+    [
+        ("1000", set(), "Amount requires HOD."),
+        ("5000000.01", set(), "Amount requires Chief of Staff."),
+        ("100000000.01", set(), "Amount requires MD."),
+        ("500000000.01", set(), "Amount requires Board."),
+        (
+            "1000",
+            {"hod"},
+            "Amount requires HOD."
+            " The requesting HOD may approve separately using the department sub-account.",
+        ),
+        (
+            "1000",
+            {"chief_of_staff"},
+            "Amount requires HOD. Requester's office raises required authority to MD.",
+        ),
+        (
+            "5000000.01",
+            {"md"},
+            "Amount requires Chief of Staff."
+            " Requester's office raises required authority to Board.",
+        ),
+        (
+            "1000",
+            {"hod", "chief_of_staff"},
+            "Amount requires HOD. Requester's office raises required authority to MD.",
+        ),
+    ],
+)
+def test_routing_text_uses_readable_office_names(amount, offices, expected):
+    assert resolve(amount, offices).explanation == expected
+
+
+def test_shared_office_names_cover_every_authority():
+    assert AUTHORITY_NAMES == {
+        "hod": "HOD",
+        "chief_of_staff": "Chief of Staff",
+        "md": "MD",
+        "board": "Board",
+    }
+    assert [a.display_name for a in Authority] == ["HOD", "Chief of Staff", "MD", "Board"]
+    assert authority_name("secretary") == "secretary"
