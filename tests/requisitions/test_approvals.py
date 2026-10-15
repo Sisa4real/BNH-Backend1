@@ -103,6 +103,27 @@ async def test_release_inbox_and_decisions(context, organisation, amount, role):
     ).status_code == 403
 
 
+async def test_signature_records_account_name_not_typed_text(context, organisation, sessions):
+    client, _, _ = context
+    req = await pending(client, organisation)
+    hod = organisation["people"]["hod"]
+    await sign_in(client, hod)
+    command = await command_for(client, req, hod, "approve")
+    wrong = {**command, "signer_name": "Someone Else"}
+    response = await client.post(f"/api/v1/requisitions/{req['id']}/actions", json=wrong)
+    assert response.status_code == 422 and response.json()["code"] == "SIGNATURE_INVALID"
+    shouted = {**command, "signer_name": "  " + hod["name"].upper() + " "}
+    response = await client.post(f"/api/v1/requisitions/{req['id']}/actions", json=shouted)
+    assert response.status_code == 200, response.text
+    async with sessions() as s:
+        decision = await s.scalar(
+            select(Decision)
+            .join(Revision, Revision.id == Decision.revision_id)
+            .where(Revision.requisition_id == UUID(req["id"]))
+        )
+        assert decision and decision.signature["name"] == hod["name"]
+
+
 @pytest.mark.parametrize("action", ["reject", "return"])
 async def test_reason_required_and_bound_to_signature(context, organisation, action):
     client, _, _ = context

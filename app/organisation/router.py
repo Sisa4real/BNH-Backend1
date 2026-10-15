@@ -63,7 +63,9 @@ class OfficeInput(Command):
     entity_id: UUID
     department_id: UUID | None = None
     role: Literal["hod", "chief_of_staff", "md", "secretary", "chairman"]
-    authorisation_reference: str = Field(min_length=3, max_length=300)
+    # Optional free-text note (e.g. appointment letter number). Who may assign is
+    # enforced separately by the office_assignment:manage permission check.
+    authorisation_reference: str = Field(default="", max_length=300)
     valid_from: datetime = Field(default_factory=lambda: datetime.now(UTC))
     valid_until: datetime | None = None
 
@@ -75,8 +77,7 @@ class OfficeInput(Command):
             raise ValueError("Appointment dates require a timezone")
         if self.valid_until is not None and self.valid_until <= self.valid_from:
             raise ValueError("Appointment end must follow its start")
-        if not self.authorisation_reference.strip():
-            raise ValueError("An authorisation reference is required")
+        self.authorisation_reference = self.authorisation_reference.strip()
         return self
 
 

@@ -119,6 +119,24 @@ async def test_department_heads_resolve_only_in_their_department(directory, sess
             await officeholder(s, uuid4(), "hod", UUID(directory["departments"][0]))
 
 
+async def test_authorisation_reference_is_optional_and_trimmed(directory, sessions):
+    client = directory["client"]
+    without = appointment(directory, 0)
+    del without["authorisation_reference"]
+    response = await client.post("/api/v1/organisation/offices", json=without)
+    assert response.status_code == 201, response.text
+    assert response.json()["authorisation_reference"] == ""
+    trimmed = appointment(directory, 1, authorisation_reference="  Letter BNH/2026/14  ")
+    response = await client.post("/api/v1/organisation/offices", json=trimmed)
+    assert response.status_code == 201, response.text
+    assert response.json()["authorisation_reference"] == "Letter BNH/2026/14"
+    async with sessions() as s:
+        stored = await s.get(Office, UUID(response.json()["id"]))
+        assert stored and stored.authorisation_reference == "Letter BNH/2026/14"
+    too_long = appointment(directory, 0, role="md", authorisation_reference="x" * 301)
+    assert (await client.post("/api/v1/organisation/offices", json=too_long)).status_code == 422
+
+
 async def test_invalid_scope_self_grants_and_mass_assignment_are_rejected(directory):
     client = directory["client"]
     wrong = appointment(directory, department_id=directory["departments"][1])

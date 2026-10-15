@@ -320,7 +320,7 @@ async def act(
         )
     signature = {
         "actor_id": str(actor.id),
-        "name": body.signer_name.strip(),
+        "name": actor.identity.display_name.strip(),
         "at": now.isoformat(),
         "intent": body.action,
         "consent": True,
